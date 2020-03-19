@@ -1,0 +1,49 @@
+p {
+    margin-top: 20px;
+}
+
+scrollbar-width: thin;
+
+.articles {
+  margin-left: 160px;
+  border: 1px solid gray;
+}
+
+.textbox {
+  width: 100%;
+  background-size: cover;
+}
+
+doc_id {
+	font-size:1.2em;
+  font-weight:bold;
+}
+
+article {
+    padding: 1em;
+    line-height: 1.2;
+    font-size: 12px;
+    display: block;
+    overflow: hidden;
+}
+
+article.disable-links {
+    pointer-events: none;
+}
+
+#meta_table, tr, th, td {
+    text-align: left;
+    line-height: 1.5;
+    margin-top: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    font-size: 14px;
+}
+
+#meta_table, td {
+    padding-left:2em;
+    font-size: 10px;
+}
+
+
+

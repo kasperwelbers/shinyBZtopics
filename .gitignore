@@ -1,0 +1,9 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.valid_tokens
+shinyBZtopics.db
+shinyBZtopics_tc.rds
+shinyBZtopics_stm.rds
+udpipe_models/*

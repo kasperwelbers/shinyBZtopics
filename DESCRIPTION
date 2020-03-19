@@ -1,0 +1,23 @@
+Package: shinyBZtopics
+Title: Topic modeling shiny app
+Version: 0.0.0.9000
+Authors@R: person('Kasper', 'Welbers', email = 'kasperwelbers@gmail.com', role = c('cre', 'aut'))
+Description: A shiny app for a topic browser.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    shiny,
+    golem,
+    htmltools,
+    stm,
+    shinydashboard,
+    corpustools,
+    tokenbrowser,
+    data.table,
+    RSQLite,
+    shinyBS,
+    shinyWidgets
+RoxygenNote: 7.0.2
+URL: https://github.com/kasperwelbers/shinyBZtopics
+BugReports: https://github.com/kasperwelbers/shinyBZtopics/issues
