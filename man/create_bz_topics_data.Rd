@@ -12,6 +12,7 @@ create_bz_topics_data(
   remove = NULL,
   deduplicate = NA,
   K = 50,
+  udpipe_cores = NULL,
   ...
 )
 }
@@ -29,6 +30,8 @@ create_bz_topics_data(
 \item{deduplicate}{Optionally, a similarity threshold for duplicates (only for articles in same medium within 24 hour diffence)}
 
 \item{K}{The number of topics in the stm model}
+
+\item{udpipe_cores}{Optionally, use parallel processing. THis is only possible with the development version of corpustools. Give a number for the number of cores to use.}
 
 \item{...}{arguments passed to \code{\link{stm}}}
 }

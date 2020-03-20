@@ -89,10 +89,11 @@ clean_amcat_set <- function(x) {
 #' @param remove       Specific features to be removed, given as a character vector
 #' @param deduplicate  Optionally, a similarity threshold for duplicates (only for articles in same medium within 24 hour diffence)
 #' @param K            The number of topics in the stm model
+#' @param udpipe_cores Optionally, use parallel processing. THis is only possible with the development version of corpustools. Give a number for the number of cores to use.
 #' @param ...          arguments passed to \code{\link{stm}}
 #' 
 #' @export
-create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_docfreq_pct=0.5, remove=NULL, deduplicate=NA, K=50, ...) {
+create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_docfreq_pct=0.5, remove=NULL, deduplicate=NA, K=50, udpipe_cores=NULL, ...) {
   if (any(!c('headline','medium','date','text') %in% colnames(d))) stop("d should have columns named headline, medium, date and text")
   
   ## the title column will be combined with the text column when creating the tokens
@@ -100,7 +101,7 @@ create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_d
   d$title = d$headline
   
   db_file = file.path(getwd(), 'shinyBZtopics.db')
-  tc_db(d, db_file=db_file)
+  tc_db(d, db_file=db_file, udpipe_cores=udpipe_cores)
 
   tc = prepare_data(unique(d$id), deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...)
 }

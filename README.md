@@ -34,3 +34,11 @@ create_bz_topics_data(d,
 
 run_topicbrowser(token_auth=F)
 ```
+
+Optionally, you can use multiple cores for parsing the data
+
+```{r}
+create_bz_topics_data(d, udpipe_cores=4,
+                      pos = c('NOUN','PROPN'), min_docfreq = 5, max_docfreq_pct = 0.5, deduplicate=0.9,
+                      K=50, seed=1)
+```
