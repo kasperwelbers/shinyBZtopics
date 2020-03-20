@@ -20,6 +20,7 @@ usethis::use_package( "RSQLite" )
 usethis::use_package( "shinyBS" ) 
 usethis::use_package( "stm" ) 
 usethis::use_package( "shinyWidgets" ) 
+usethis::use_package( "Matrix" ) 
 
 ## 2.3 Add tests
 

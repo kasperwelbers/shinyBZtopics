@@ -21,9 +21,9 @@ prepare_data <- function(ids, deduplicate, db_file, K, pos, min_docfreq, max_doc
   tc$delete_columns(c('start','end','sentence','lemma','POS'))
   
   dtm = corpustools::get_dfm(tc, feature='feature', drop_empty_terms = T)
-  full_docs = rowSums(dtm) > 0
+  full_docs = Matrix::rowSums(dtm) > 0
   
-  dtm = quanteda::dfm_subset(dtm, rowSums(dtm) > 0)
+  dtm = quanteda::dfm_subset(dtm, full_docs)
   tc$subset_meta(full_docs)
   
   if (!all(rownames(dtm) == tc$meta$doc_id)) stop('document names in tc$meta and dtm are not identical. If this happens, please file bug report')
