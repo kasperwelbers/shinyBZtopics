@@ -4,7 +4,14 @@
 \alias{run_topicbrowser}
 \title{Run the Shiny Application}
 \usage{
-run_topicbrowser(bz_data, token_auth = F, port = 6171, topic_names = NULL, ...)
+run_topicbrowser(
+  bz_data,
+  token_auth = F,
+  port = 6171,
+  topic_selection = NULL,
+  fname = NULL,
+  ...
+)
 }
 \arguments{
 \item{bz_data}{the data, prepared with create_bz_topics_data()}
@@ -13,6 +20,11 @@ run_topicbrowser(bz_data, token_auth = F, port = 6171, topic_names = NULL, ...)
 The token should be passed to the app with the ?token URL parameter}
 
 \item{port}{The port}
+
+\item{topic_selection}{Optionally, the indices of topics to show}
+
+\item{fname}{Optionally, the name of a folder in shinyBZtopics_data/. By default the most recent
+data is used.}
 }
 \description{
 Run the Shiny Application

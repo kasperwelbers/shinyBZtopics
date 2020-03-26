@@ -38,6 +38,11 @@ create_bz_topics_data(
 \description{
 Parses the texts and stores the results in a database, so that texts do not need to be parsed again if data is updated.
 Then fits the STM model. The results are not returned, but the tcorpus and stm model are saved in the current working directory.
-These files are then used by the \code{\link{run_topicbrowser}} function. Thus, this function only needs to be used the first time and
-when new data is added.
+These files are then used by the \code{\link{run_topicbrowser}} function.
+}
+\details{
+Every time the function is run, the data will be stored under a new name (with a time stamp) 
+in the shinyBZtopics_data folder. This prevents accidentally overwriting data, but it also means
+that you'll have to keep track of this folder yourself to limit unnecessary data piling up.
+By default, the most recent created data is used in \code{\link{run_topicbrowser}}
 }

@@ -1,4 +1,5 @@
-prepare_data <- function(ids, deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...) {
+
+prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...) {
   message('Reading tokens from database')
   tc = get_tc(db_file, ids)
   tc$meta$date = as.POSIXct(tc$meta$date)
@@ -29,11 +30,77 @@ prepare_data <- function(ids, deduplicate, db_file, K, pos, min_docfreq, max_doc
   if (!all(rownames(dtm) == tc$meta$doc_id)) stop('document names in tc$meta and dtm are not identical. If this happens, please file bug report')
   
   m = stm::stm(documents=dtm, K=K, ...)
-    
-  saveRDS(tc, file = 'shinyBZtopics_tc.rds')
-  saveRDS(m, file = 'shinyBZtopics_stm.rds')
+  
+  topic_names = topword_string(m)
+  
+  saveRDS(topic_names, file.path(path, 'shinyBZtopics_topicnames.rds'))
+  saveRDS(tc, file = file.path(path, 'shinyBZtopics_tc.rds'))
+  saveRDS(m, file = file.path(path, 'shinyBZtopics_stm.rds'))
   message('Data has been saved in the current working directory. You can now run run_topicbrowser()')
   return(NULL)
+}
+
+topword_string <- function(m, cols=5, colspace=10) {
+  topwords = stm::labelTopics(m, n = 10)
+  spaced_list <- function(x, colspace) {
+    for (i in 1:length(x)) {
+      if (nchar(x[i]) == colspace) 
+        x[i] = paste0(x[i], ' ')
+      else {
+        if (nchar(x[i]) > ((2*colspace)-2)) 
+          x[i] = paste0(substr(x[i], 0, (2*colspace)-4), '... ')
+        else 
+          if (nchar(x[i]) > colspace) x[i] = paste0(x[i], paste0(rep(' ', (2*colspace) - nchar(x[i])), collapse=''), '  ')
+          if (nchar(x[i]) < colspace) x[i] = paste0(x[i], paste0(rep(' ', colspace - nchar(x[i])), collapse=''), ' ')
+      }
+    }
+    paste(x, collapse='')
+  }
+  tstring = apply(topwords$frex, 1, spaced_list, colspace=10)
+  substr(tstring, 0, cols*(colspace+1))
+}
+
+
+most_likely_topic <- function(tc, m) {
+  ## chooses the topic with the highest harmonic mean of P(topic|document) and P(term|topic)
+  topicXterm = exp(m$beta$logbeta[[1]])
+  docXtopic = m$theta
+  
+  not_na = !is.na(tc$tokens$feature)
+  topic = rep(NA, sum(not_na))
+  high_score = rep(0, sum(not_na))
+  
+  vocab_index = match(tc$tokens$feature[not_na], m$vocab)
+  doc_index = match(tc$tokens$doc_id[not_na], tc$meta$doc_id)
+  
+  
+  for (i in 1:ncol(m$theta)) {
+    doc_score = docXtopic[,i]
+    term_score = topicXterm[i,]
+    score = doc_score[doc_index] * term_score[vocab_index]
+    
+    is_higher = score > high_score
+    topic[is_higher] = i
+    high_score[is_higher] = score[is_higher]  
+  }
+  toptopic = rep(NA, nrow(tc$tokens))
+  topscore = rep(NA, nrow(tc$tokens))
+  toptopic[not_na] = topic
+  topscore[not_na] = high_score
+  list(topic=toptopic, topicscore=topscore)
+}
+
+#' Create .valid_tokens file
+#' 
+#' Creates the .valid_tokens file. Previous versions will be overwritten 
+#' (so only the most recently created tokens are valid)
+#'
+#' @param tokens 
+#'
+#' @return safety
+#' @export
+set_tokens <- function(tokens) {
+  writeLines(paste(tokens, collapse='\n'), con = '.valid_tokens')
 }
 
 rename_cols <- function(d, from, to) {
@@ -79,8 +146,12 @@ clean_amcat_set <- function(x) {
 #' 
 #' Parses the texts and stores the results in a database, so that texts do not need to be parsed again if data is updated.
 #' Then fits the STM model. The results are not returned, but the tcorpus and stm model are saved in the current working directory.
-#' These files are then used by the \code{\link{run_topicbrowser}} function. Thus, this function only needs to be used the first time and
-#' when new data is added. 
+#' These files are then used by the \code{\link{run_topicbrowser}} function. 
+#' 
+#' Every time the function is run, the data will be stored under a new name (with a time stamp) 
+#' in the shinyBZtopics_data folder. This prevents accidentally overwriting data, but it also means
+#' that you'll have to keep track of this folder yourself to limit unnecessary data piling up.
+#' By default, the most recent created data is used in \code{\link{run_topicbrowser}}
 #'
 #' @param d            A data.frame with the columns "headline", "medium", "date" and "text". All other column will be included as metadata.
 #' @param pos          A selection of POS tags to use. See \url{https://universaldependencies.org/u/pos/} for the universal dependencies POS tags.
@@ -100,8 +171,12 @@ create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_d
   ## the headline column will then remain as metadata, which looks better when scrolling the documents
   d$title = d$headline
   
+  path = paste0('created_', gsub(' ', '_', as.character(Sys.time())))
+  path = file.path('shinyBZtopics_data', path)
+  if (!dir.exists(path)) dir.create(path, recursive = TRUE)
+  
   db_file = file.path(getwd(), 'shinyBZtopics.db')
   tc_db(d, db_file=db_file, udpipe_cores=udpipe_cores)
-
-  tc = prepare_data(unique(d$id), deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...)
+  
+  tc = prepare_data(unique(d$id), path, deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...)
 }
