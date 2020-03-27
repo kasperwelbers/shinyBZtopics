@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .valid_tokens
+shinyBZtopics_data/*
 shinyBZtopics.db
 shinyBZtopics_tc.rds
 shinyBZtopics_stm.rds
