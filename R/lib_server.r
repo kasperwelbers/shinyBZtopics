@@ -1,6 +1,7 @@
 validate_token <- function(session) {
   tokens = readLines('.valid_tokens')
-  query <- parseQueryString(session$clientData$url_search)
+  qs = paste0(session$clientData$url_search, session$clientData$url_hash)
+  query <- parseQueryString(qs)
   if (!query$token %in% tokens) stop("Close session due to invalid token")
 }
 
@@ -23,25 +24,19 @@ create_meta_table <- function(input, data, topic_scores) {
   if (length(input$media_filter) > 0)
     meta_table = meta_table[list(medium=input$media_filter),,on='medium']
   
-  ## if multiple topics are selected, documents with lowest max are mixture topics
-  if (length(input$topic_filter) == 1)
-    meta_table$topic_mix = 1 - meta_table[,5]
-  else {
-    meta_table$topic_mix = apply(meta_table[,5:ncol(meta_table)], 1, mixture_score)
+  if (length(input$query_filter) > 0) {
+    hits = corpustools::search_contexts(data$tc, input$query_filter)
+    .doc_ids = unique(hits$hits$doc_id)
+    meta_table = meta_table[list(doc_id=.doc_ids),,on='doc_id']
   }
+  
+  if (nrow(meta_table) == 0) return(NULL)
+  
   
   meta_table
 }
 
-mixture_score <- function(x) {
-  ## given the topic proportions for a selection of topics, rank documents on:
-  ## 1. being most defined by the selection of topics (i.e. the sum of proportions) 
-  ## 2. in case of multiple topics, prioritize mixtures
-  exp = 1/length(x)
-  err = exp - x
-  err[err < 0] = 0   ## ignore negative error (where proportion of topic is higher than expected)
-  sum(err)
-}
+
 
 create_graph_data <- function(input, meta_table) {
   if (is.null(meta_table)) return(NULL)
@@ -98,6 +93,20 @@ set_widget_defaults <- function(session, data) {
   maxdate = max(as.Date(data$tc$meta$date))
   updateDateRangeInput(session, 'daterange', start= mindate, end=maxdate)
   
+  
+  #query = isolate(paste0(session$clientData$url_search, session$clientData$url_hash))
+  qs = isolate(paste0(session$clientData$url_search, session$clientData$url_hash))
+  query <- parseQueryString(qs)
+  if (!is.null(query$amcat_queries)) {
+    print(qs)
+    print(query$amcat_queries)
+    query_string = utils::URLdecode(query$amcat_queries)
+    #query_string = gsub('.*amcat_queries=', '', query_string)
+    #query_string = gsub('=.*', '', query_string)
+    updateTextAreaInput(session, 'queries', value=query_string)
+  }
+  
+  
   media = sort(unique(data$tc$meta$medium))
   shinyWidgets::updatePickerInput(session, inputId = 'media_filter', choices = as.list(media))
 }
@@ -110,12 +119,13 @@ set_topic_names <- function(session, input, data, topic_names) {
   shinyWidgets::updatePickerInput(session, inputId = 'topic_filter', choices = l, selected=current_selection)
 }
 
-rename_topic <- function(session, input, data, topic_names) {
+save_topic_names <- function(session, input, data, topic_names) {
   selected_topic = input$sb_select_topic
   selected_topic_i = as.numeric(gsub('topic_','',selected_topic))
   topic_names[selected_topic_i] = input$sb_rename_topic
   saveRDS(topic_names, file=data$topic_names_file)
 }
+
 
 update_sidebar_topic_names <- function(session, input, topic_names) {
   l = as.list(paste0('topic_', 1:length(topic_names)))
@@ -126,6 +136,25 @@ update_sidebar_topic_names <- function(session, input, topic_names) {
   
   updateSelectizeInput(session, 'sb_select_topic', choices=l, selected=l[[selected_topic_i]])
 }
+
+
+update_query_widgets <- function(session, input, queries) {
+  queries = parse_queries(input$queries)
+  l = as.list(paste(queries$code, queries$query, sep='# '))
+  names(l) = queries$code
+  current_selection = gsub('# .*', '', input$queries_filter) %in% queries$code
+  current_selection = input$queries_filter[current_selection]
+  shinyWidgets::updatePickerInput(session, inputId = 'query_filter', choices = l, selected=current_selection)
+}
+
+parse_queries <- function(query_txt) {
+  queries_txt = strsplit(query_txt, '\n')[[1]]
+  queries_txt = queries_txt[grepl('#', queries_txt)]
+  data.frame(code = gsub('#.*','', queries_txt),
+             query = gsub('.*# *', '', queries_txt))
+}
+
+
 
 #sidebar_topic_names <- function(session, input, data) {
 #  ntopics = ncol(data$m$theta)
@@ -166,7 +195,7 @@ is_datepreset <- function(graph_data, datewindow) {
 create_articlelist_data <- function(input, data, meta_table, daterange) {
   if (is.null(meta_table)) return(NULL)
   
-  m = subset(meta_table, select = c('doc_id','medium','date','headline', input$topic_filter, 'topic_mix'))
+  m = subset(meta_table, select = c('doc_id','medium','date','headline', input$topic_filter))
   m$date = as.Date(m$date)
   
   if (!is.null(daterange)) {
@@ -179,9 +208,24 @@ create_articlelist_data <- function(input, data, meta_table, daterange) {
   }
   
   if (nrow(m) == 0) NULL else {
-    m = m[order(m$topic_mix),]
+    ## if multiple topics are selected, documents with lowest max are mixture topics
+    if (length(input$topic_filter) == 1)
+      m$topic_mix = m[,5]
+    else {
+      m$topic_mix = apply(m[,5:ncol(m)], 1, mixture_score)
+    }
+    m = m[order(-m$topic_mix),]
     subset(m, select=c('doc_id','medium','date','headline', input$topic_filter))
   }
+}
+
+
+
+mixture_score <- function(x) {
+  ## given the topic proportions for a selection of topics, rank documents on:
+  ## 1. being most defined by the selection of topics (i.e. the sum of proportions) 
+  ## 2. in case of multiple topics, prioritize mixtures
+  sum(x) - sd(x)
 }
 
 
@@ -197,7 +241,10 @@ create_articlelist <- function(data, articlelist_data, topic_colors) {
                           bar_string, " }); }"), collapse = "")
   
   d = articlelist_data[,-1]  ## drop doc_id
-  sparkline = as.character(apply(round(d[,4:ncol(d)], 3), 1, paste, collapse=','))   
+  if (ncol(d) == 4)
+    sparkline = paste0(d[[4]],',0')
+  else
+    sparkline = as.character(apply(round(d[,4:ncol(d)], 3), 1, paste, collapse=','))   
   d = cbind(d[,1:3], topic=sparkline)
   DT::datatable(d, options=list(dom = 'tp', stateSave=T, columnDefs = colDefs, fnDrawCallback = cb_bar), selection='single')
 }
@@ -258,7 +305,7 @@ create_articles <- function(input, data, articlelist, topic_names, topic_colors)
 
 create_wordcloud <- function(topic_filter, data, topic_names, topic_colors) {
   if (length(topic_filter) > 0) {
-    n = 15
+    n = max(10, 50 / length(topic_filter) )
     plot_topicwords(data, n, topics = topic_filter, topic_colors = topic_colors, topic_names=topic_names)
   } else NULL
 }

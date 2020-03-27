@@ -9,17 +9,22 @@ app_server <- function(input, output,session) {
   if (data$token_auth) observe(validate_token(session))
   set_widget_defaults(session, data)                                
   
-  topic_names = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$topic_names, readFunc = readRDS)
+  query_txt = debounce(reactive(input$queries), 500)
+  observe(update_query_widgets(session, input, query_txt()))
+  
+  ## topic name management
+  topic_names = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$topic_names_file, readFunc = readRDS)
   observe(update_sidebar_topic_names(session, input, topic_names()))
   topic_colors = reactive(create_topic_colors(topic_names()))
+  observeEvent(input$sb_select_topic, updateSearchInput(session, 'sb_rename_topic', value=''))
+  observeEvent(input$sb_rename_topic_search, save_topic_names(session, input, data, topic_names()))
+  observe(set_topic_names(session, input, data, topic_names()))        ## observe to be updated
+  
   
   observeEvent(input$topic_filter, {
     output$wordcloud = renderPlot(create_wordcloud(input$topic_filter, data, topic_names(), topic_colors()))
   }, ignoreInit=T)
   
-  observeEvent(input$sb_select_topic, updateSearchInput(session, 'sb_rename_topic', value=''))
-  observeEvent(input$sb_rename_topic_search, rename_topic(session, input, data, topic_names()))
-  observe(set_topic_names(session, input, data, topic_names()))        ## observe to be updated
   
 
   topic_scores = reactive(prepare_topic_scores(data))

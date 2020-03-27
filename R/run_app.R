@@ -1,22 +1,25 @@
 #' Run the Shiny Application
+#' 
+#' This uses the data most recently created with \code{\link{create_bz_topics_data}}.
+#' In case you have (accidentally) overwritten data that you want to use, see \code{\link{use_data_backup}}
 #'
-#' @param bz_data the data, prepared with create_bz_topics_data()
-#' @param port    The port
+#' For some data, such as topic names, the app uses persistent storage shared by all users. 
+#' You can thus set the topic names within the app.
+#'
 #' @param token_auth If True, read the .valid_tokens file (create with \code{\link{set_tokens}}) to authenticate tokens. 
 #'                   The token should be passed to the app with the ?token URL parameter
+#' @param port    The port
 #' @param topic_selection Optionally, the indices of topics to show
-#' @param fname      Optionally, the name of a folder in shinyBZtopics_data/. By default the most recent
-#'                   data is used.
 #'                   
 #'
 #' @export
 #' @importFrom shiny shinyApp
 #' @importFrom golem with_golem_options
-run_topicbrowser <- function(bz_data, token_auth=F, port=6171, topic_selection=NULL, fname=NULL, ...) {
+run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...) {
   if (token_auth && !file.exists('.valid_tokens')) stop('token_auth is used, but now tokens have been created. Use set_tokens(...) first')
   
   ## prepare slow and memory heavy data, so that its not copied and created/loaded by each user
-  path = get_data_path(fname)
+  path = get_data_path(NULL)
   
   data_exists = file.exists(file.path(path, 'shinyBZtopics_tc.rds')) && file.exists(file.path(path, 'shinyBZtopics_stm.rds'))
   if (!data_exists) stop('Data for the topic browser has not yet been created. Run create_bz_topics_data(...) first')
@@ -40,10 +43,41 @@ run_topicbrowser <- function(bz_data, token_auth=F, port=6171, topic_selection=N
   
   topic_ids = paste0('topic_', 1:ncol(m$theta))
   
+  url = 'http://127.0.0.1:6171?amcat_queries=bz# bz OR "buitenlandse zaken"\nminister# minister'
+  url = utils::URLencode(url)
+  message(paste0('When the server is running, you can test opening a session in your browser with url parameters for amcat style queries\n\n', 
+                 url))
+  
   with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server, options = list(port=port, ...)), 
-    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, topic_selection=topic_selection, frex_terms=frex_terms, frex_matrix=frex_matrix, token_auth=token_auth)
+    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, 
+                      topic_selection=topic_selection, frex_terms=frex_terms, frex_matrix=frex_matrix, token_auth=token_auth)
   )
+}
+
+#' Restore previous shinyBZtopics data
+#' 
+#' TLDR: give the name of a backup folder in shinyBZtopics_data/ to restore this data.
+#' 
+#' All previously created data with \code{\link{create_bz_topics_data}} is stored in the shinyBZtopics_data folder,
+#' with timestamps of the time the data was first created. Whenever you run run_topicbrowser, the most recent
+#' data is used in the app. If you pass the name of one of the backup folder (named 'created_DATETIME')
+#' to the use_data_backup function, it will create a new copy with a new timestamp.
+#' 
+#' Note that if you updated data (using if_existing = 'update'), this will have created a new data folder (the original data will still have its own backup)
+#'
+#' @param fname The name of a folder in shinyBZtopics_data/
+#'
+#' @export
+use_data_backup <- function(fname) {
+  if (!dir.exists(file.path(getwd(), 'shinyBZtopics_data'))) stop('no data has been created yet')
+  
+  path = file.path(getwd(), get_data_path(fname))
+  
+  new_path = file.path(getwd(),
+                       'shinyBZtopics_data',
+                       paste0('created_', gsub(' ', '_', as.character(Sys.time()))))
+  x = file.rename(path, new_path)
 }
 
 get_data_path <- function(fname=NULL) {
@@ -52,7 +86,9 @@ get_data_path <- function(fname=NULL) {
     date = strptime(gsub('.*created\\_', '', f), '%Y-%m-%d_%H:%M:%S')
     f = f[order(date, decreasing = T)][1]
   } else {
-    if (!fname %in% gsub('.*/', '', f)) stop('fname is not a valid folder name in shinyBZtopics_data/')
+    which_f = grepl(fname, f, fixed=T)
+    if (!any(which_f)) stop('fname is not a valid folder name in shinyBZtopics_data/')
+    f = f[which_f]
   }
   f
 }
@@ -73,7 +109,7 @@ plot_topic_quality <- function() {
 
 
 function() {
- ## project 1916 in amcat en dan set 78102
+  ## project 1916 in amcat en dan set 78102
   library(shinyBZtopics)
   library(amcatr)
   conn = amcat.connect('https://amcat.nl')
@@ -84,6 +120,4 @@ function() {
                         K=50, seed=1)
   run_topicbrowser(token_auth=F)
   
-  
- 
-}
+ }

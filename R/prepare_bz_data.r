@@ -30,9 +30,15 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   if (!all(rownames(dtm) == tc$meta$doc_id)) stop('document names in tc$meta and dtm are not identical. If this happens, please file bug report')
   
   m = stm::stm(documents=dtm, K=K, ...)
+  #m = readRDS('shinyBZtopics_data/created_2020-03-27_09:14:07/shinyBZtopics_stm.rds')
   
-  topic_names = topword_string(m)
+  ## this was a nice idea, except html totally messes up the spacing
+  #topic_names = topword_string(m)
   
+  topwords = stm::labelTopics(m, n = 5)
+  topic_names = apply(topwords$frex, 1, paste, collapse=', ')
+  
+  queries = data.frame(code=character(), query=character())   ## should we make this an argument?
   saveRDS(topic_names, file.path(path, 'shinyBZtopics_topicnames.rds'))
   saveRDS(tc, file = file.path(path, 'shinyBZtopics_tc.rds'))
   saveRDS(m, file = file.path(path, 'shinyBZtopics_stm.rds'))
@@ -151,7 +157,9 @@ clean_amcat_set <- function(x) {
 #' Every time the function is run, the data will be stored under a new name (with a time stamp) 
 #' in the shinyBZtopics_data folder. This prevents accidentally overwriting data, but it also means
 #' that you'll have to keep track of this folder yourself to limit unnecessary data piling up.
-#' By default, the most recent created data is used in \code{\link{run_topicbrowser}}
+#' 
+#' By default, the most recent created data is used in \code{\link{run_topicbrowser}}. You can restore
+#' a backup with \code{\link{use_data_backup}}.
 #'
 #' @param d            A data.frame with the columns "headline", "medium", "date" and "text". All other column will be included as metadata.
 #' @param pos          A selection of POS tags to use. See \url{https://universaldependencies.org/u/pos/} for the universal dependencies POS tags.
@@ -160,23 +168,34 @@ clean_amcat_set <- function(x) {
 #' @param remove       Specific features to be removed, given as a character vector
 #' @param deduplicate  Optionally, a similarity threshold for duplicates (only for articles in same medium within 24 hour diffence)
 #' @param K            The number of topics in the stm model
+#' @param if_existing  If data has been created before, you need to specify if you want to create "new" data with a new stm model, or if you want to "update" the previous stm model with the new/additional data.
+#'                     If this is not specified, you will receive a message saying that you should be clear on this, because its important. 
 #' @param udpipe_cores Optionally, use parallel processing. THis is only possible with the development version of corpustools. Give a number for the number of cores to use.
 #' @param ...          arguments passed to \code{\link{stm}}
 #' 
 #' @export
-create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_docfreq_pct=0.5, remove=NULL, deduplicate=NA, K=50, udpipe_cores=NULL, ...) {
+create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_docfreq_pct=0.5, remove=NULL, deduplicate=NA, K=50, if_existing=c('stop','new','update'), udpipe_cores=NULL, ...) {
   if (any(!c('headline','medium','date','text') %in% colnames(d))) stop("d should have columns named headline, medium, date and text")
-  
+  if_existing = match.arg(if_existing)
   ## the title column will be combined with the text column when creating the tokens
   ## the headline column will then remain as metadata, which looks better when scrolling the documents
   d$title = d$headline
-  
-  path = paste0('created_', gsub(' ', '_', as.character(Sys.time())))
-  path = file.path('shinyBZtopics_data', path)
-  if (!dir.exists(path)) dir.create(path, recursive = TRUE)
+
+  if (length(list.files(getwd(), 'shinyBZtopics')) > 0) {
+    if (if_existing == 'stop') stop('\nWAAAAAIIIT STOP!!!!!\n\nData has already been created before. Therefore specify with the if_existing argument whether you want to create "new" data with a new stm model (a backup of the old data wil be kept), or to "update" the previous stm model with the new/additional data')
+  } else 
+    if_existing='new'
   
   db_file = file.path(getwd(), 'shinyBZtopics.db')
   tc_db(d, db_file=db_file, udpipe_cores=udpipe_cores)
   
-  tc = prepare_data(unique(d$id), path, deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...)
+  if (if_existing == 'new') {
+    path = paste0('created_', gsub(' ', '_', as.character(Sys.time())))
+    path = file.path(getwd(), 'shinyBZtopics_data', path)
+    if (!dir.exists(path)) dir.create(path, recursive = TRUE)
+    tc = prepare_data(unique(d$id), path, deduplicate, db_file, K, pos, min_docfreq, max_docfreq_pct, remove, ...)
+  }
+  if (if_existing == 'update') {
+    stop('update still has to be implemented (eeeeen door!!!)')
+  }
 }

@@ -23,6 +23,7 @@ usethis::use_package( "shinyWidgets" )
 usethis::use_package( "Matrix" ) 
 usethis::use_package( "sparkline" ) 
 
+
 ## 2.3 Add tests
 
 usethis::use_test( "app" )

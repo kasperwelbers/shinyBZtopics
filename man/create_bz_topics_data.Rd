@@ -12,6 +12,7 @@ create_bz_topics_data(
   remove = NULL,
   deduplicate = NA,
   K = 50,
+  if_existing = c("stop", "new", "update"),
   udpipe_cores = NULL,
   ...
 )
@@ -31,6 +32,9 @@ create_bz_topics_data(
 
 \item{K}{The number of topics in the stm model}
 
+\item{if_existing}{If data has been created before, you need to specify if you want to create "new" data with a new stm model, or if you want to "update" the previous stm model with the new/additional data.
+If this is not specified, you will receive a message saying that you should be clear on this, because its important.}
+
 \item{udpipe_cores}{Optionally, use parallel processing. THis is only possible with the development version of corpustools. Give a number for the number of cores to use.}
 
 \item{...}{arguments passed to \code{\link{stm}}}
@@ -44,5 +48,7 @@ These files are then used by the \code{\link{run_topicbrowser}} function.
 Every time the function is run, the data will be stored under a new name (with a time stamp) 
 in the shinyBZtopics_data folder. This prevents accidentally overwriting data, but it also means
 that you'll have to keep track of this folder yourself to limit unnecessary data piling up.
-By default, the most recent created data is used in \code{\link{run_topicbrowser}}
+
+By default, the most recent created data is used in \code{\link{run_topicbrowser}}. You can restore
+a backup with \code{\link{use_data_backup}}.
 }

@@ -4,28 +4,21 @@
 \alias{run_topicbrowser}
 \title{Run the Shiny Application}
 \usage{
-run_topicbrowser(
-  bz_data,
-  token_auth = F,
-  port = 6171,
-  topic_selection = NULL,
-  fname = NULL,
-  ...
-)
+run_topicbrowser(token_auth = F, port = 6171, topic_selection = NULL, ...)
 }
 \arguments{
-\item{bz_data}{the data, prepared with create_bz_topics_data()}
-
 \item{token_auth}{If True, read the .valid_tokens file (create with \code{\link{set_tokens}}) to authenticate tokens. 
 The token should be passed to the app with the ?token URL parameter}
 
 \item{port}{The port}
 
 \item{topic_selection}{Optionally, the indices of topics to show}
-
-\item{fname}{Optionally, the name of a folder in shinyBZtopics_data/. By default the most recent
-data is used.}
 }
 \description{
-Run the Shiny Application
+This uses the data most recently created with \code{\link{create_bz_topics_data}}.
+In case you have (accidentally) overwritten data that you want to use, see \code{\link{use_data_backup}}
+}
+\details{
+For some data, such as topic names, the app uses persistent storage shared by all users. 
+You can thus set the topic names within the app.
 }
