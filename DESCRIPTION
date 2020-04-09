@@ -19,7 +19,8 @@ Imports:
     shinyBS,
     shinyWidgets,
     Matrix,
-    sparkline
+    sparkline,
+    matrixStats
 RoxygenNote: 7.0.2
 URL: https://github.com/kasperwelbers/shinyBZtopics
 BugReports: https://github.com/kasperwelbers/shinyBZtopics/issues

@@ -16,16 +16,33 @@
 #' @importFrom shiny shinyApp
 #' @importFrom golem with_golem_options
 run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...) {
-  if (token_auth && !file.exists('.valid_tokens')) stop('token_auth is used, but now tokens have been created. Use set_tokens(...) first')
+  if (token_auth && !file.exists('.valid_tokens')) stop('token_auth is used, but no tokens have been created. Use set_tokens(...) first')
+  if (!webshot::is_phantomjs_installed()) {
+    message("This app uses webshot to enable screenshots of graphs. This requires first installing phantomJS")
+    webshot::install_phantomjs()
+  }
   
   ## prepare slow and memory heavy data, so that its not copied and created/loaded by each user
   path = get_data_path(NULL)
   
-  data_exists = file.exists(file.path(path, 'shinyBZtopics_tc.rds')) && file.exists(file.path(path, 'shinyBZtopics_stm.rds'))
+  data_exists = file.exists(file.path(path, 'shinyBZtopics_tc.rds')) && file.exists(file.path(path, 'shinyBZtopics_stm.rds')) && file.exists(file.path(path, 'shinyBZtopics_topicnames.rds'))
   if (!data_exists) stop('Data for the topic browser has not yet been created. Run create_bz_topics_data(...) first')
   tc = readRDS(file.path(path, 'shinyBZtopics_tc.rds'))
   m = readRDS(file.path(path, 'shinyBZtopics_stm.rds'))
   topic_names_file = file.path(path, 'shinyBZtopics_topicnames.rds')
+  
+  ## topic colors and topic groups are created on the spot if they do not yet exist
+  topic_colors_file = file.path(path, 'shinyBZtopics_colors.rds')
+  if (!file.exists(topic_colors_file)) {
+    topic_colors = create_topic_colors(ncol(m$theta))
+    saveRDS(topic_colors, topic_colors_file)
+  }
+  
+  topic_groups_file = file.path(path, 'shinyBZtopics_groups.rds')
+  if (!file.exists(topic_groups_file)) {
+    topic_groups = create_topic_groups(ncol(m$theta))
+    saveRDS(topic_groups, topic_groups_file)
+  }
   
   mlt = most_likely_topic(tc,m)
   tc$tokens$topic = mlt$topic
@@ -38,8 +55,8 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
     topic_selection = 1:ncol(m$theta)
   }
   
-  frex_terms = stm::labelTopics(m, n = 50)$frex
-  frex_matrix = stm::calcfrex(m$beta$logbeta[[1]])
+  top_terms = stm::labelTopics(m, n = 50)
+  #frex_matrix = stm::calcfrex(m$beta$logbeta[[1]])
   
   topic_ids = paste0('topic_', 1:ncol(m$theta))
   
@@ -50,10 +67,11 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
   
   with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server, options = list(port=port, ...)), 
-    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, 
-                      topic_selection=topic_selection, frex_terms=frex_terms, frex_matrix=frex_matrix, token_auth=token_auth)
+    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, topic_colors_file=topic_colors_file, topic_groups_file=topic_groups_file,
+                      topic_selection=topic_selection, top_terms=top_terms, token_auth=token_auth)
   )
 }
+stm::calclift
 
 #' Restore previous shinyBZtopics data
 #' 
@@ -112,6 +130,7 @@ function() {
   ## project 1916 in amcat en dan set 78102
   library(shinyBZtopics)
   library(amcatr)
+  
   conn = amcat.connect('https://amcat.nl')
   
   d = get_amcat_data(conn, project=1916, set=78102, clean = T)

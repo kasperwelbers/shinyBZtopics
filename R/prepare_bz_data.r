@@ -33,10 +33,9 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   #m = readRDS('shinyBZtopics_data/created_2020-03-27_09:14:07/shinyBZtopics_stm.rds')
   
   ## this was a nice idea, except html totally messes up the spacing
-  #topic_names = topword_string(m)
   
   topwords = stm::labelTopics(m, n = 5)
-  topic_names = apply(topwords$frex, 1, paste, collapse=', ')
+  topic_names = apply(topwords$prob, 1, paste, collapse=', ')
   
   queries = data.frame(code=character(), query=character())   ## should we make this an argument?
   saveRDS(topic_names, file.path(path, 'shinyBZtopics_topicnames.rds'))
@@ -45,27 +44,6 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   message('Data has been saved in the current working directory. You can now run run_topicbrowser()')
   return(NULL)
 }
-
-topword_string <- function(m, cols=5, colspace=10) {
-  topwords = stm::labelTopics(m, n = 10)
-  spaced_list <- function(x, colspace) {
-    for (i in 1:length(x)) {
-      if (nchar(x[i]) == colspace) 
-        x[i] = paste0(x[i], ' ')
-      else {
-        if (nchar(x[i]) > ((2*colspace)-2)) 
-          x[i] = paste0(substr(x[i], 0, (2*colspace)-4), '... ')
-        else 
-          if (nchar(x[i]) > colspace) x[i] = paste0(x[i], paste0(rep(' ', (2*colspace) - nchar(x[i])), collapse=''), '  ')
-          if (nchar(x[i]) < colspace) x[i] = paste0(x[i], paste0(rep(' ', colspace - nchar(x[i])), collapse=''), ' ')
-      }
-    }
-    paste(x, collapse='')
-  }
-  tstring = apply(topwords$frex, 1, spaced_list, colspace=10)
-  substr(tstring, 0, cols*(colspace+1))
-}
-
 
 most_likely_topic <- function(tc, m) {
   ## chooses the topic with the highest harmonic mean of P(topic|document) and P(term|topic)
