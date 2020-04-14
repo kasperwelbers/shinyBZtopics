@@ -7,26 +7,41 @@ app_server <- function(input, output,session) {
   ## This way, there should not be multiple copies of the data for concurrent users.
   data = golem::get_golem_options()
   if (data$token_auth) observe(validate_token(session))
-  set_widget_defaults(session, data)                                
   
-  query_txt = debounce(reactive(input$queries), 500)
-  observe(update_query_widgets(session, input, query_txt()))
+  set_widget_defaults(session, data)
   
-  ## topic data management
+  #query_txt = debounce(reactive(input$queries), 500)
+  #observe(update_query_widgets(session, input, query_txt()))
+  
+  ## Load settings
   topic_names = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$topic_names_file, readFunc = readRDS)
   observe(update_sidebar_topic_names(session, input, topic_names()))
   
   topic_colors = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$topic_colors_file, readFunc = readRDS)
   topic_groups = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$topic_groups_file, readFunc = readRDS)
   
+  imported_queries = parse_url_queries(session, output)
+  queries = reactiveFileReader(session=session, intervalMillis = 1000, filePath = data$queries_file, readFunc = readRDS)
+  observe(update_query_widgets(session, input, imported_queries, queries()))
+  
+  ## Update settings
   observeEvent(input$sb_select_topic, on_select_topic(session, output, input, data, topic_names=topic_names(), topic_colors=topic_colors(), topic_groups=topic_groups()))
   observeEvent(input$sb_rename_topic_search, save_topic_names(session, input, data, topic_names()))
+  observe(set_topic_names(session, input, data, topic_names()))        ## observe to be updated
+  
   observeEvent(input$sb_color_topic, save_topic_color(session, input, data, topic_colors()))
+  
   observeEvent(input$sb_group_topic, ignoreNULL = F, {
     output$save_groups_button = renderUI(actionButton('sb_group_topic_save', 'Bevestig groepering', color='green'))
   })
   observeEvent(input$sb_group_topic_save, save_topic_groups(session, output, input, data, topic_names(), topic_groups()))
-  observe(set_topic_names(session, input, data, topic_names()))        ## observe to be updated
+  
+  observeEvent(input$sb_queries, ignoreNULL = F, {
+    output$save_queries_button = renderUI(actionButton('sb_queries_save', 'Bevestig aanpassingen', color='green'))
+  })
+  observeEvent(input$sb_queries_save, save_queries(session, output, input, data))
+  
+  
   
 
   topic_filter <- debounce(reactive({input$topic_filter}), millis = 500)
@@ -42,7 +57,7 @@ app_server <- function(input, output,session) {
   
   
   topic_scores = reactive(prepare_topic_scores(data, topic_groups()))
-  meta_table = reactive(create_meta_table(input, data, topic_filter(), topic_scores()))
+  meta_table = reactive(create_meta_table(session, input, data, topic_filter(), topic_scores()))
   
   graph_data = reactive(create_graph_data(input, meta_table()))
   graph = reactive(create_graph(input, data, graph_data(), topic_filter(), topic_names(), topic_colors()))

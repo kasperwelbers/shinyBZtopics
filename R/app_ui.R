@@ -6,6 +6,7 @@ app_ui <- function() {
   
   tagList(
     golem_add_external_resources(),
+    shinyalert::useShinyalert(),  # Set up shinyalert
     
     dashboardPage(title = 'Topic browser',
                   dashboardHeader(title = 'Instellingen'),
@@ -71,7 +72,7 @@ sidebar_ui <- function(data, q, sidebarheight='200vh', inputcontainer_height) {
   
   tagList(
     div(align='center',
-      radioButtons('sidebar_tab', inline=T, label="Wat wil je aanpassen?", 
+      radioButtons('sidebar_tab', inline=T, label="Wat wilt u aanpassen?", 
                   choices = list('Labels en kleuren'= 'modify_topics', 'Groepen'= 'modify_groups', 'Zoektermen'='modify_queries'), 
                   selected = 'modify_topics')
     ),
@@ -90,7 +91,7 @@ sidebar_ui <- function(data, q, sidebarheight='200vh', inputcontainer_height) {
     conditionalPanel("input.sidebar_tab == 'modify_topics'", {
       div(align='left',style="margin-left:20px", 
         #h2('Topic labels', align='center'),
-        column(width=12, p('Hier kun je de labels en kleuren van topics aanpassen. Veranderingen zijn voor alle gebruikers zichtbaar.')),
+        column(width=12, p('Hier kunt u de labels en kleuren van topics aanpassen. Veranderingen zijn voor alle gebruikers zichtbaar.')),
         fluidRow(
           div(align='center',
             column(width=8, shinyWidgets::searchInput('sb_rename_topic', label = "Nieuw label", value='', btnSearch = icon('refresh'))),
@@ -101,7 +102,7 @@ sidebar_ui <- function(data, q, sidebarheight='200vh', inputcontainer_height) {
     }),
     conditionalPanel("input.sidebar_tab == 'modify_groups'", {
       div(align='left', style="margin-left:20px", width='400px',
-          column(width=12, p('Hier kun je andere topics onder het geselecteerde topic groeperen. De topics zijn dan niet meer zichtbaar, en de resultaten worden bij het bovenliggende topic opgeteld')),
+          column(width=12, p('Hier kunt u andere topics onder het geselecteerde topic groeperen. De topics zijn dan niet meer zichtbaar, en de resultaten worden bij het bovenliggende topic opgeteld')),
           column(width=12, span(textOutput('in_group', ), style="color: green")),
           br(),
           div(align='center', style = "height: 800px",
@@ -114,9 +115,10 @@ sidebar_ui <- function(data, q, sidebarheight='200vh', inputcontainer_height) {
     conditionalPanel("input.sidebar_tab == 'modify_queries'", {
       div(align='center',
         h2('Zoektermen', align='center'),
-        p('Hier kun je zoektermen bekijken en eventueel aanpassen.', br(), 
-          'Aanpassingen worden niet opgeslagen'),
-        textAreaInput('queries', height='300px', label = "", value='', placeholder = 'label# zoekterm AND zoekterm ...')
+        column(width=12, p('Hier kunt u manueel zoektermen toevoegen. Veranderingen zijn voor alle gebruikers zichtbaar.')),
+        #textOutput('sb_imported_queries'),
+        textAreaInput('sb_queries', height='300px', label = "", value='', placeholder = 'label# zoekterm AND zoekterm ...'),
+        uiOutput('save_queries_button')
       )
     })
   )

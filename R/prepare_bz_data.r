@@ -37,7 +37,6 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   topwords = stm::labelTopics(m, n = 5)
   topic_names = apply(topwords$prob, 1, paste, collapse=', ')
   
-  queries = data.frame(code=character(), query=character())   ## should we make this an argument?
   saveRDS(topic_names, file.path(path, 'shinyBZtopics_topicnames.rds'))
   saveRDS(tc, file = file.path(path, 'shinyBZtopics_tc.rds'))
   saveRDS(m, file = file.path(path, 'shinyBZtopics_stm.rds'))

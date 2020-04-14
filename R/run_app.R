@@ -31,7 +31,7 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
   m = readRDS(file.path(path, 'shinyBZtopics_stm.rds'))
   topic_names_file = file.path(path, 'shinyBZtopics_topicnames.rds')
   
-  ## topic colors and topic groups are created on the spot if they do not yet exist
+  ## topic colors, topic groups and queries are created on the spot if they do not yet exist
   topic_colors_file = file.path(path, 'shinyBZtopics_colors.rds')
   if (!file.exists(topic_colors_file)) {
     topic_colors = create_topic_colors(ncol(m$theta))
@@ -42,6 +42,12 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
   if (!file.exists(topic_groups_file)) {
     topic_groups = create_topic_groups(ncol(m$theta))
     saveRDS(topic_groups, topic_groups_file)
+  }
+  
+  queries_file = file.path(path, 'shinyBZtopics_queries.rds')
+  if (!file.exists(queries_file)) {
+    queries = ''
+    saveRDS(queries, queries_file)
   }
   
   mlt = most_likely_topic(tc,m)
@@ -67,11 +73,10 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
   
   with_golem_options(
     app = shinyApp(ui = app_ui, server = app_server, options = list(port=port, ...)), 
-    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, topic_colors_file=topic_colors_file, topic_groups_file=topic_groups_file,
+    golem_opts = list(tc=tc, m=m, K=ncol(m$theta), topic_names_file=topic_names_file, topic_colors_file=topic_colors_file, topic_groups_file=topic_groups_file, queries_file=queries_file,
                       topic_selection=topic_selection, top_terms=top_terms, token_auth=token_auth)
   )
 }
-stm::calclift
 
 #' Restore previous shinyBZtopics data
 #' 

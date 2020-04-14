@@ -24,6 +24,7 @@ usethis::use_package( "Matrix" )
 usethis::use_package( "sparkline" ) 
 usethis::use_package( "colourpicker" ) 
 usethis::use_package( "matrixStats" ) 
+usethis::use_package( "shinyalert" ) 
 
 ## 2.3 Add tests
 

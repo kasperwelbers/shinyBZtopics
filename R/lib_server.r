@@ -40,7 +40,7 @@ group_matrix <- function(m, topic_groups, only_return_top=F) {
   m
 }
 
-create_meta_table <- function(input, data, topic_filter, topic_scores) {
+create_meta_table <- function(session, input, data, topic_filter, topic_scores) {
   if (length(topic_filter) == 0) return(NULL)
   print('meta update')
   
@@ -50,8 +50,12 @@ create_meta_table <- function(input, data, topic_filter, topic_scores) {
   if (length(input$media_filter) > 0)
     meta_table = meta_table[list(medium=input$media_filter),,on='medium']
   
+
   if (length(input$query_filter) > 0) {
-    hits = corpustools::search_contexts(data$tc, input$query_filter)
+    hits = tryCatch(corpustools::search_contexts(data$tc, input$query_filter),
+             error = function(e) NULL)
+    if (is.null(hits)) hits = drop_bad_queries(session, input, data)
+    if (is.null(hits)) return(NULL)
     .doc_ids = unique(hits$hits$doc_id)
     meta_table = meta_table[list(doc_id=.doc_ids),,on='doc_id']
   }
@@ -60,6 +64,26 @@ create_meta_table <- function(input, data, topic_filter, topic_scores) {
   
   
   meta_table
+}
+
+
+drop_bad_queries <- function(session, input, data) {
+  n = length(input$query_filter)
+  is_bad = vector(length=n)
+  for (i in 1:n) {
+    q = input$query_filter[i]
+    hits = tryCatch(corpustools::search_contexts(data$tc, q), error = function(e) NULL)
+    if (is.null(hits)) is_bad[i] = T
+  }
+  if (any(is_bad)) {
+    bad_queries = input$query_filter[is_bad]
+    bad_queries = gsub('\\# .*', '', bad_queries)
+    print('alert?')
+    shinyalert::shinyalert('Incorrecte zoektermen', sprintf('De volgende zoektermen zijn incorrect gespecificeerd:\n\n%s\n\nDeze termen zijn nu gedeactiveerd in de zoektermen filter.', paste(bad_queries, collapse='\n')))
+    shinyWidgets::updatePickerInput(session, 'query_filter', selected= input$query_filter[!is_bad])
+    if (all(is_bad)) return(NULL)
+  }
+  corpustools::search_contexts(data$tc, input$query_filter[!is_bad])
 }
 
 
@@ -119,22 +143,18 @@ create_graph <- function(input, data, graph_data, topic_filter, topic_names, top
   
 }
 
+parse_url_queries <- function(session, output) {
+  qs = isolate(paste0(session$clientData$url_search, session$clientData$url_hash))
+  query <- parseQueryString(qs)
+  queries = if (is.null(query$amcat_queries)) NULL else utils::URLdecode(query$amcat_queries)
+  #output$sb_imported_queries = renderText(queries)
+  queries
+}
+
 set_widget_defaults <- function(session, data) {
   mindate = min(as.Date(data$tc$meta$date))
   maxdate = max(as.Date(data$tc$meta$date))
   updateDateRangeInput(session, 'daterange', start= mindate, end=maxdate)
-  
-  
-  #query = isolate(paste0(session$clientData$url_search, session$clientData$url_hash))
-  qs = isolate(paste0(session$clientData$url_search, session$clientData$url_hash))
-  query <- parseQueryString(qs)
-  if (!is.null(query$amcat_queries)) {
-    query_string = utils::URLdecode(query$amcat_queries)
-    #query_string = gsub('.*amcat_queries=', '', query_string)
-    #query_string = gsub('=.*', '', query_string)
-    updateTextAreaInput(session, 'queries', value=query_string)
-  }
-  
   
   media = sort(unique(data$tc$meta$medium))
   shinyWidgets::updatePickerInput(session, inputId = 'media_filter', choices = as.list(media))
@@ -182,6 +202,12 @@ save_topic_groups <- function(session, output, input, data, topic_names, topic_g
   saveRDS(topic_groups, file=data$topic_groups_file)
 }
 
+save_queries <- function(session, output, input, data) {
+  queries = input$sb_queries
+  saveRDS(queries, file=data$queries_file)
+  output$save_queries_button = renderUI(NULL)
+}
+
 on_select_topic <- function(session, output, input, data, topic_names, topic_colors, topic_groups) {
   selected_topic = input$sb_select_topic
   selected_topic_i = as.numeric(gsub('topic_','',selected_topic))
@@ -217,16 +243,42 @@ update_sidebar_topic_names <- function(session, input, topic_names) {
 }
 
 
-update_query_widgets <- function(session, input, queries) {
-  queries = parse_queries(input$queries)
+update_query_widgets <- function(session, input, imported_queries, queries) {
+  updateTextAreaInput(session, 'sb_queries', value = queries)
+  queries = rbind(parse_queries(imported_queries),
+                  parse_queries(queries))
+  dup_i = match(queries$code, unique(queries$code))
+  
+  queries$code = as.character(queries$code)
+  queries$code = stringi::stri_trim(queries$code)
+  queries$code = unique_label(queries$code)
+
   l = as.list(paste(queries$code, queries$query, sep='# '))
   names(l) = queries$code
-  current_selection = gsub('# .*', '', input$queries_filter) %in% queries$code
-  current_selection = input$queries_filter[current_selection]
+  current_selection = gsub('# .*', '', input$query_filter) %in% queries$code
+  current_selection = input$query_filter[current_selection]
   shinyWidgets::updatePickerInput(session, inputId = 'query_filter', choices = l, selected=current_selection)
 }
 
+
+unique_label <- function(x) {
+  x = as.character(x)
+  dup_str = paste0(x, '#', 1)
+  i = 2
+  while(TRUE){
+    dupl = duplicated(dup_str)
+    if (any(dupl)) {
+      dup_str[dupl] = paste0(dup_str[dupl], '#', i)
+      i = i + 1
+    } else break
+  }
+  dup_i = as.numeric(gsub('.*#','',dup_str))
+  ifelse(dup_i > 1, sprintf('%s (%s)', x, dup_i), x)
+}
+
+
 parse_queries <- function(query_txt) {
+  if (is.null(query_txt)) return(NULL)
   queries_txt = strsplit(query_txt, '\n')[[1]]
   queries_txt = queries_txt[grepl('#', queries_txt)]
   data.frame(code = gsub('#.*','', queries_txt),
@@ -426,10 +478,11 @@ plot_topicwords <- function(data, n, topics, topic_colors, topic_names, top_word
   
   par(mar=c(0,0,0,0))
   set.seed(1)
+  print(wordmat)
   if (length(topics) == 1)
-    wordcloud::wordcloud(words=rownames(wordmat), scale = c(2,0.7), freq = wordmat[,1], colors=col)
+    wordcloud::wordcloud(words=rownames(wordmat), scale = c(3,0.7), freq = wordmat[,1], colors=col)
   else
-    wordcloud::comparison.cloud(wordmat, scale = c(2,0.7), colors=col, title.size = 0.001)
+    wordcloud::comparison.cloud(wordmat, scale = c(3,0.7), colors=col, title.size = 0.001)
 }
 
 save_graph <- function(session, g) {
