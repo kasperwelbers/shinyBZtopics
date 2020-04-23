@@ -160,12 +160,19 @@ set_widget_defaults <- function(session, data) {
   shinyWidgets::updatePickerInput(session, inputId = 'media_filter', choices = as.list(media))
 }
 
-set_topic_names <- function(session, input, data, topic_names) {
+set_topic_names <- function(session, input, data, topic_names, topic_groups) {
   isolate({current_selection = input$topic_filter})
-  l = as.list(paste0('topic_', 1:length(topic_names)))
-  names(l) = topic_names
-  l = l[data$topic_selection]
-  shinyWidgets::updatePickerInput(session, inputId = 'topic_filter', choices = l, selected=current_selection)
+  
+  valid_choices = unique(topic_groups$parent)
+  valid_choices = intersect(valid_choices, paste('topic', data$topic_selection, sep='_'))
+  l = as.list(valid_choices)
+  names(l) = topic_names[as.numeric(gsub('topic\\_','',valid_choices))]
+  #l = as.list(paste0('topic_', 1:length(topic_names)))
+  #names(l) = topic_names
+  
+  new_selection = intersect(current_selection, valid_choices)
+  
+  shinyWidgets::updatePickerInput(session, inputId = 'topic_filter', choices = l, selected=new_selection)
 }
 
 save_topic_names <- function(session, input, data, topic_names) {
@@ -211,7 +218,8 @@ save_queries <- function(session, output, input, data) {
 on_select_topic <- function(session, output, input, data, topic_names, topic_colors, topic_groups) {
   selected_topic = input$sb_select_topic
   selected_topic_i = as.numeric(gsub('topic_','',selected_topic))
-  output$sb_top_words_prob = renderText(paste(head(data$top_terms$prob[,selected_topic_i], 10), collapse=', '))
+ 
+  output$sb_top_words = renderText(paste(data$top_terms$frex[selected_topic_i,], collapse=', '))
   #output$sb_top_words_lift = renderText(paste(head(data$top_terms$lift[,selected_topic_i], 10), collapse=', '))
   updateSearchInput(session, 'sb_rename_topic', value='')
   colourpicker::updateColourInput(session, 'sb_color_topic', value=topic_colors[[selected_topic]])
@@ -443,13 +451,16 @@ create_topwords_matrix <- function(data, topic_groups) {
   logbeta = t(logbeta)
   colnames(logbeta) = paste0('topic_', 1:ncol(logbeta))
   logbeta = group_matrix(logbeta, topic_groups, only_return_top = T)
-  #stm_frex_scores(t(logbeta), 0.5, data$m$settings$dim$wcounts$x)
   exp(logbeta)
 }
 
 create_topwords <- function(data, topwords_matrix) {
   max_n=50
-  apply(topwords_matrix, 2, function(x) data$m$vocab[order(-x)[1:max_n]])
+  #apply(topwords_matrix, 2, function(x) data$m$vocab[order(-x)[1:max_n]])
+  wordcounts <- data$m$settings$dim$wcounts$x
+  vocab = data$m$vocab
+  frexlabels <- stm::calcfrex(log(t(topwords_matrix)), 0.5, wordcounts)
+  apply(frexlabels, 2, function(x) vocab[head(x, max_n)])
 }
 
 create_wordcloud <- function(topic_filter, data, topic_names, topic_colors, top_words, top_words_matrix) {
@@ -458,7 +469,6 @@ create_wordcloud <- function(topic_filter, data, topic_names, topic_colors, top_
     plot_topicwords(data, n, topics = topic_filter, topic_colors = topic_colors, topic_names=topic_names, top_words, top_words_matrix)
   } else NULL
 }
-
 
 plot_topicwords <- function(data, n, topics, topic_colors, topic_names, top_words, top_words_matrix) {
   selected_topics_i = as.numeric(gsub('topic_','',topics))
@@ -469,7 +479,9 @@ plot_topicwords <- function(data, n, topics, topic_colors, topic_names, top_word
   words = words[!duplicated(words$word),]
 
   vocab_i = match(words$word, data$m$vocab)
-  wordmat = top_words_matrix[vocab_i,selected_topics_i,drop=F]
+  
+
+  wordmat = top_words_matrix[vocab_i,paste("topic", selected_topics_i, sep='_'),drop=F]
 
   col = as.character(unlist(topic_colors[topics]))
   
@@ -478,11 +490,10 @@ plot_topicwords <- function(data, n, topics, topic_colors, topic_names, top_word
   
   par(mar=c(0,0,0,0))
   set.seed(1)
-  print(wordmat)
   if (length(topics) == 1)
-    wordcloud::wordcloud(words=rownames(wordmat), scale = c(3,0.7), freq = wordmat[,1], colors=col)
+    wordcloud::wordcloud(words=rownames(wordmat), scale = c(2,0.7), freq = wordmat[,1], colors=col)
   else
-    wordcloud::comparison.cloud(wordmat, scale = c(3,0.7), colors=col, title.size = 0.001)
+    wordcloud::comparison.cloud(wordmat, scale = c(2,0.7), colors=col, title.size = 0.001)
 }
 
 save_graph <- function(session, g) {

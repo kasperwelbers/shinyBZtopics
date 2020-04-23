@@ -61,7 +61,7 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
     topic_selection = 1:ncol(m$theta)
   }
   
-  top_terms = stm::labelTopics(m, n = 50)
+  top_terms = stm::labelTopics(m, n = 20)
   #frex_matrix = stm::calcfrex(m$beta$logbeta[[1]])
   
   topic_ids = paste0('topic_', 1:ncol(m$theta))

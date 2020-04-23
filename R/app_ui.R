@@ -82,7 +82,7 @@ sidebar_ui <- function(data, q, sidebarheight='200vh', inputcontainer_height) {
         div(align='center', selectizeInput('sb_select_topic', 'Selecteer topic', choices = l, selected=l[[1]])),
         column(width=12, 
                #h5('Frequente woorden'),
-               textOutput('sb_top_words_prob'),
+               span(textOutput('sb_top_words'), style="color: lightgrey"),
                #h5('Onderscheidende woorden'),
                #textOutput('sb_top_words_lift')
         )

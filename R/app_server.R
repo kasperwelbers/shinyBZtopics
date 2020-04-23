@@ -27,7 +27,7 @@ app_server <- function(input, output,session) {
   ## Update settings
   observeEvent(input$sb_select_topic, on_select_topic(session, output, input, data, topic_names=topic_names(), topic_colors=topic_colors(), topic_groups=topic_groups()))
   observeEvent(input$sb_rename_topic_search, save_topic_names(session, input, data, topic_names()))
-  observe(set_topic_names(session, input, data, topic_names()))        ## observe to be updated
+  observe(set_topic_names(session, input, data, topic_names(), topic_groups()))        ## observe to be updated
   
   observeEvent(input$sb_color_topic, save_topic_color(session, input, data, topic_colors()))
   

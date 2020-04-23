@@ -118,10 +118,11 @@ get_amcat_data <- function(conn, project, set, headline_col='headline', medium_c
 }
 
 clean_amcat_set <- function(x) {
-  x = gsub(',,', "''", x) 
-  x = gsub('\\(\\(\\(|\\)\\)\\)', "''", x) 
+  x = gsub(',,|’’', '"', x) 
+  x = gsub(',|’', "'", x) 
+  x = gsub('\\(\\(\\(|\\)\\)\\)', " ", x) 
   x = gsub('\\|[\\|-]+', "\n", x) 
-  x = gsub('\\(\\+\\)', '', x)
+  x = gsub('\\(\\+\\)', ' ', x)
   x
 }
 
