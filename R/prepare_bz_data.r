@@ -13,7 +13,6 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   tc$preprocess('lemma', new_column = 'feature', lowercase = F, as_ascii = T)
   tc$set('feature', gsub('^[-"\']|[-"\']$', '', feature))
   
-  
   tc$feature_subset('feature', subset = POS %in% pos, min_char = 2, 
                     min_docfreq = min_docfreq, max_docfreq = floor(max_docfreq_pct * tc$n_meta))
   if (!is.null(remove)) tc$feature_subset('feature', subset = !feature %in% remove)
@@ -44,6 +43,12 @@ prepare_data <- function(ids, path, deduplicate, db_file, K, pos, min_docfreq, m
   return(NULL)
 }
 
+#' Get most likely topic
+#'
+#' @param tc tCorpus
+#' @param m stm model 
+#'
+#' @export
 most_likely_topic <- function(tc, m) {
   ## chooses the topic with the highest harmonic mean of P(topic|document) and P(term|topic)
   topicXterm = exp(m$beta$logbeta[[1]])
@@ -55,7 +60,6 @@ most_likely_topic <- function(tc, m) {
   
   vocab_index = match(tc$tokens$feature[not_na], m$vocab)
   doc_index = match(tc$tokens$doc_id[not_na], tc$meta$doc_id)
-  
   
   for (i in 1:ncol(m$theta)) {
     doc_score = docXtopic[,i]
@@ -154,6 +158,12 @@ clean_amcat_set <- function(x) {
 #' @export
 create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_docfreq_pct=0.5, remove=NULL, deduplicate=NA, K=50, if_existing=c('stop','new','update'), udpipe_cores=NULL, ...) {
   if (any(!c('headline','medium','date','text') %in% colnames(d))) stop("d should have columns named headline, medium, date and text")
+  for (cname in colnames(d)) {
+    if (all(is.na(d[[cname]]))) {
+      stop(sprintf('The column "%s" only contains NA values (probably because something went wrong in get_amcat_data())', cname))
+    }
+  }
+  
   if_existing = match.arg(if_existing)
   ## the title column will be combined with the text column when creating the tokens
   ## the headline column will then remain as metadata, which looks better when scrolling the documents
@@ -163,6 +173,7 @@ create_bz_topics_data <- function(d, pos=c('NOUN','PROPN'), min_docfreq=5, max_d
     if (if_existing == 'stop') stop('\nWAAAAAIIIT STOP!!!!!\n\nData has already been created before. Therefore specify with the if_existing argument whether you want to create "new" data with a new stm model (a backup of the old data wil be kept), or to "update" the previous stm model with the new/additional data')
   } else 
     if_existing='new'
+  
   
   db_file = file.path(getwd(), 'shinyBZtopics.db')
   tc_db(d, db_file=db_file, udpipe_cores=udpipe_cores)

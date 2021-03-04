@@ -136,12 +136,12 @@ function() {
   library(shinyBZtopics)
   library(amcatr)
   
-  conn = amcat.connect('https://amcat.nl')
+  conn = amcat.connect('https://bzk.nieuwsmonitor.org')
   
-  d = get_amcat_data(conn, project=1916, set=78102, clean = T)
-  create_bz_topics_data(d, 
+  d = get_amcat_data(conn, project=7, set=4606, clean = T, headline_col = 'title', medium_col = 'publisher')
+  
+  create_bz_topics_data(d, if_existing = 'new', 
                         pos = c('NOUN','PROPN'), min_docfreq = 5, max_docfreq_pct = 0.5, deduplicate=0.9,
                         K=50, seed=1)
   run_topicbrowser(token_auth=F)
-  
  }

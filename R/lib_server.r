@@ -236,7 +236,6 @@ on_select_topic <- function(session, output, input, data, topic_names, topic_col
   choices = as.list(valid_choices)
   names(choices) = topic_names[as.numeric(gsub('topic\\_','',unlist(choices)))]
   selected = topic_groups[list(parent = selected_topic),,on='parent', nomatch=0]$child
-  
   shinyWidgets::updateMultiInput(session, 'sb_group_topic', choices=choices, selected=selected)
 }
 
@@ -256,11 +255,13 @@ update_query_widgets <- function(session, input, imported_queries, queries) {
   queries = rbind(parse_queries(imported_queries),
                   parse_queries(queries))
   dup_i = match(queries$code, unique(queries$code))
-  
-  queries$code = as.character(queries$code)
-  queries$code = stringi::stri_trim(queries$code)
-  queries$code = unique_label(queries$code)
 
+  if (nrow(queries) > 0) {
+    queries$code = as.character(queries$code)
+    queries$code = stringi::stri_trim(queries$code)
+    queries$code = unique_label(queries$code)
+  }
+  
   l = as.list(paste(queries$code, queries$query, sep='# '))
   names(l) = queries$code
   current_selection = gsub('# .*', '', input$query_filter) %in% queries$code
