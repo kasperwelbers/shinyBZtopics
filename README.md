@@ -42,5 +42,3 @@ create_bz_topics_data(d, udpipe_cores=4,
                       pos = c('NOUN','PROPN'), min_docfreq = 5, max_docfreq_pct = 0.5, deduplicate=0.9,
                       K=50, seed=1)
 ```
-
-Note that before you can use the topicbrowser, you have to add at least one query by accessing the server with `?query=name#query`, and then going into the settings and adding the query to zoektermen. 
