@@ -138,7 +138,7 @@ function() {
   
   conn = amcat.connect('https://bzk.nieuwsmonitor.org')
   
-  d = get_amcat_data(conn, project=7, set=4606, clean = T, headline_col = 'title', medium_col = 'publisher')
+  d = get_amcat_data(conn, project=7, set=4606, clean = T, headline_col = 'title', medium_col = 'medium')
   
   create_bz_topics_data(d, if_existing = 'new', 
                         pos = c('NOUN','PROPN'), min_docfreq = 5, max_docfreq_pct = 0.5, deduplicate=0.9,
