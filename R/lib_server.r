@@ -308,10 +308,12 @@ parse_queries <- function(query_txt) {
 
 create_topic_colors <- function(k) {
   ## default topic colors, only made at first run
-  colors = as.list(rainbow(k))
+  colors = as.list(grDevices::rainbow(k+1)[-1])
   names(colors) = paste0('topic_', 1:k)
   colors
 }
+
+
 
 create_topic_groups <- function(k) {
   ## default topic merges (that is, no mergers), only made at first run

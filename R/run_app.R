@@ -130,7 +130,6 @@ plot_topic_quality <- function() {
   stm::topicQuality(m, dtm)
 }
 
-
 function() {
   ## project 1916 in amcat en dan set 78102
   library(shinyBZtopics)
