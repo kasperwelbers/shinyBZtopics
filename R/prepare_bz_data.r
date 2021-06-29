@@ -111,8 +111,8 @@ rename_cols <- function(d, from, to) {
 #'
 #' @return A data.frame
 #' @export
-get_amcat_data <- function(conn, project, set, headline_col='headline', medium_col='medium', clean=T) {
-  d = amcatr::amcat.hits(conn, queries='*', project=project, sets=set, col = c('id','date',medium_col,headline_col,'text'))   
+get_amcat_data <- function(conn, project, set, headline_col='headline', medium_col='medium', clean=T, ...) {
+  d = amcatr::amcat.hits(conn, queries='*', project=project, sets=set, col = c('id','date',medium_col,headline_col,'text'), ...)   
   d = rename_cols(d, from=c(medium_col, headline_col), to=c('medium','headline'))
   if (clean) {
     d$headline = clean_amcat_set(d$headline)
