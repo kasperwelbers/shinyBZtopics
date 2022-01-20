@@ -10,12 +10,13 @@
 #'                   The token should be passed to the app with the ?token URL parameter
 #' @param port    The port
 #' @param topic_selection Optionally, the indices of topics to show
+#' @param top_n The number of terms to use for top terms
 #'                   
 #'
 #' @export
 #' @importFrom shiny shinyApp
 #' @importFrom golem with_golem_options
-run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...) {
+run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, top_n=20, ...) {
   if (token_auth && !file.exists('.valid_tokens')) stop('token_auth is used, but no tokens have been created. Use set_tokens(...) first')
   if (!webshot::is_phantomjs_installed()) {
     message("This app uses webshot to enable screenshots of graphs. This requires first installing phantomJS")
@@ -61,7 +62,7 @@ run_topicbrowser <- function(token_auth=F, port=6171, topic_selection=NULL, ...)
     topic_selection = 1:ncol(m$theta)
   }
   
-  top_terms = stm::labelTopics(m, n = 20)
+  top_terms = stm::labelTopics(m, n = top_n)
   #frex_matrix = stm::calcfrex(m$beta$logbeta[[1]])
   
   topic_ids = paste0('topic_', 1:ncol(m$theta))
